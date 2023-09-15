@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <!-- FontAwesome CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+  <title>Enviar Mensagem Usuarios Slack</title>
+  <style>
+    textarea#message {
+      font-size: 18px !important;
+      border-radius: 5px !important;
+      border: 2px solid #ccc !important;
+      padding: 10px !important;
+      resize: vertical !important;
+      width: 900px;
+      height: 380px;
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
+    }
+    @media screen and (max-width: 767px) {
+      textarea#message {
+        font-size: 0.8rem;
+        height: 6rem;
+      }
+    }
+    button.btn.btn-primary {
+      background-color: #007bff !important;
+      color: white !important;
+      padding: 12px 20px !important;
+      border: none !important;
+      border-radius: 4px !important;
+      cursor: pointer !important;
+    }
+    button.btn.btn-primary:hover {
+      background-color: #2f0aff !important;
+    }
+    .toolbar {
+      background-color: #007bff;
+      color: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+    }
+    .toolbar button {
+      margin-right: 5px;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      background-color: #0056b3;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease 0s;
+    }
+    .toolbar button:hover {
+      background-color: #007bff;
+      box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+    }
+    .toolbar button:active {
+      transform: translateY(1px);
+      box-shadow: 0px 3px 7px rgba(0, 0, 0, 0.1);
+    }
+    /* Estilos para tooltips */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 120px;
+      background-color: black;
+      color: #fff;
+      text-align: center;
+      padding: 5px 0;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      /* Posición */
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container d-flex flex-column justify-content-center align-items-center ">
+    <h1 class="mt-5">Enviar Mensagem Usuarios Slack</h1>
+    <form method=post enctype=multipart/form-data>
+      <div class="form-group">
+        <input type=file class="form-control-file" id="csv-file" name="file">
+      </div>
+      <!-- Formatting Toolbar -->
+      <div class="toolbar">
+        <button type="button" onclick="applyFormat('bold')"><i class="bi bi-type-bold"></i></button>
+        <button type="button" onclick="applyFormat('italic')"><i class="bi bi-type-italic"></i></button>
+        <button type="button" onclick="applyFormat('strikethrough')"><i class="bi bi-type-strikethrough"></i></button>
+        <button type="button" onclick="applyFormat('blockquote')"><i class="bi bi-blockquote-left"></i></button>
+        <button type="button" onclick="applyFormat('code')"><i class="bi bi-code"></i></button>
+        <button type="button" onclick="applyFormat('codeblock')"><i class="bi bi-code-square"></i></button>
+        <button type="button" onclick="applyFormat('orderedlist')"><i class="bi bi-list-ol"></i></button>
+        <button type="button" onclick="applyFormat('bulletedlist')"><i class="bi bi-list-ul"></i></button>
+        <button type="button" onclick="applyFormat('link')"><i class="bi bi-link-45deg"></i></button>
+      </div>
+      <!-- End of Toolbar -->
+      <div class="form-group">
+        <label for="message">Mensaje para Slack:</label>
+        <textarea class="form-control" id="message" name="message" rows="10"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary">Upload</button>
+      <!-- Agregar el botón "Volver" aquí -->
+      <button type="button" id="goBackButton" class="btn btn-secondary mt-2" style="display:none;">Voltar</button>
+    </form>
+    <div id="loading-image" style="display: none;">
+      <img src="https://gifs.eco.br/wp-content/uploads/2021/08/imagens-e-gifs-de-loading-7.gif" alt="Cargando...">
+    </div>
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-success mt-3 w-100 text-center flash-message" role="alert">
+      {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+  </div>
+  <!-- Optional JavaScript -->
+  <script>
+    function applyFormat(format) {
+      var textArea = document.getElementById('message');
+      var start = textArea.selectionStart;
+      var end = textArea.selectionEnd;
+      var selectedText = textArea.value.substring(start, end);
+      var newText = '';
+      switch (format) {
+        case 'bold':
+          newText = `*${selectedText}*`;
+          break;
+        case 'italic':
+          newText = `_${selectedText}_`;
+          break;
+        case 'strikethrough':
+          newText = `~${selectedText}~`;
+          break;
+        case 'code':
+          newText = `\`${selectedText}\``;
+          break;
+        case 'blockquote':
+          newText = `>${selectedText}`;
+          break;
+        case 'codeblock':
+          newText = `\`\`\`${selectedText}\`\`\``;
+          break;
+        case 'orderedlist':
+          newText = `1. ${selectedText}`;
+          break;
+        case 'bulletedlist':
+          newText = `* ${selectedText}`;
+          break;
+        case 'link':
+          var url = prompt("Por favor, ingrese la URL:", "http://");
+          var text = prompt("Por favor, ingrese el texto del enlace:", selectedText);
+          if (url !== null && text !== null) {
+            newText = `<${url}|${text}>`;
+          }
+          break;
+      }
+      textArea.value = textArea.value.substring(0, start) + newText + textArea.value.substring(end);
+      textArea.selectionStart = start;
+      textArea.selectionEnd = start + newText.length;
+    }
+  </script>
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+  <script>
+    $(document).ready(function () {
+      // Cargar mensaje anterior si está disponible
+      const prevMessage = localStorage.getItem('prevMessage');
+      if (prevMessage) {
+        $('#message').val(prevMessage);
+        // Eliminar el mensaje de localStorage solo si se ha hecho clic en el botón "Volver"
+        if (localStorage.getItem('isGoBackClicked')) {
+          localStorage.removeItem('prevMessage');
+          localStorage.removeItem('isGoBackClicked'); // Limpiar el estado del botón "Volver"
+        }
+      }
+      // Mostrar el botón "Volver" si hay un mensaje flash
+      if ($('.flash-message').length > 0) {
+        $('#goBackButton').show();
+      }
+      // Recargar la página cuando se haga clic en "Volver"
+      $('#goBackButton').click(function () {
+        localStorage.setItem('isGoBackClicked', 'true'); // Indicar que el botón "Volver" se ha hecho clic
+        location.reload();
+      });
+    });
+    $('form').on('submit', function () {
+      // Guardar el mensaje actual en localStorage antes de enviar
+      const currentMessage = $('#message').val();
+      localStorage.setItem('prevMessage', currentMessage);
+      $('#loading-image').show();
+    });
+    setTimeout(function () {
+      $('.flash-message').fadeOut('fast');
+    }, 1000);
+  </script>
+  </script>
+</body>
+</html>
