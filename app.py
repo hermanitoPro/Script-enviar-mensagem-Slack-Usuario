@@ -7,22 +7,25 @@ import pandas as pd
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+import chardet  
 load_dotenv()
-app = Flask(__name__)  # Corrección aquí
+app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = './uploads'
 app.secret_key = os.urandom(24).hex()
 ALLOWED_EXTENSIONS = {'csv'}
-
 slack_token = os.environ.get('SLACK_TOKEN')
 client = WebClient(token=slack_token)
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
+        bot_choice = request.form.get('botChoice', 'BOT1')  
+        slack_token = os.environ.get(f'SLACK_TOKEN_{bot_choice}')  
+        client = WebClient(token=slack_token)  
         if 'file' not in request.files:
             flash('Arquivo não encontrado')
             return redirect(request.url)
         file = request.files['file']
-        mensaje = request.form.get('message', '')  
+        mensaje = request.form.get('message', '')
         if file.filename == '':
             flash('Nenhum arquivo foi selecionado')
             return redirect(request.url)
@@ -30,21 +33,27 @@ def upload_file():
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
-            process_file(file_path, mensaje)  
-            flash('Mensaje enviado exitosamente')  
+            process_file(file_path, mensaje, client)  
+            flash('Mensaje enviado exitosamente')
             return redirect(url_for('upload_file'))
     return render_template('upload.html')
-def process_file(file_path, mensaje):  
+def process_file(file_path, mensaje, client):  
     destinatarios_enviados = []
     destinatarios_errores = []
+    # Detectar la codificación del archivo
+    with open(file_path, 'rb') as f:
+        result = chardet.detect(f.read())
     try:
-        df = pd.read_csv(file_path, sep=';', encoding='utf-8')
+        df = pd.read_csv(file_path, sep=';', encoding=result['encoding'])
         for index, row in df.iterrows():
-            destinatario = row['Destinatário'] 
+            destinatario = row['Destinatário']
+            # Nuevo: Busca el mensaje de la columna "Posição" si existe
+            numero_mensaje = row.get('Posição', None)  # Obtener el número de la columna "Posição"
+            mensaje_especifico = mensaje.replace("{aqui}", str(numero_mensaje)) if numero_mensaje else mensaje  # Reemplazar {aqui} con el número
             while True:
                 try:
                     user = client.users_lookupByEmail(email=destinatario)
-                    client.chat_postMessage(channel=user['user']['id'], text=mensaje)  
+                    client.chat_postMessage(channel=user['user']['id'], text=mensaje_especifico)  
                     print(f"Mensagem enviada para {destinatario}")
                     destinatarios_enviados.append(destinatario)
                     break
@@ -71,23 +80,24 @@ def enviar_resumen(destinatarios_enviados, destinatarios_errores):
     # Salvar o DataFrame em um arquivo do Excel
     resumen_excel = 'resumo_envio.xlsx'
     df.to_excel(resumen_excel, index=False)
-    # Envie o arquivo do Excel como um anexo em uma mensagem do Slack
-    email_resumen = "esteban.gonzalez@neon.com.br"
-    try:
-        user = client.users_lookupByEmail(email=email_resumen)
-        client.files_upload(
-            channels=user['user']['id'],
-            file=resumen_excel,
-            title='Resumo de Envio',
-            initial_comment='Resumo das mensagens enviadas e não enviadas.'
-        )
-        print(f"Resumo enviado para {email_resumen}")
-    except SlackApiError as e:
-        print(f"Erro ao enviar resumo para {email_resumen}: {e.response['error']}")
+    # Lista de correos electrónicos a los que se enviará el resumen
+    emails_resumen = ["esteban.gonzalez@neon.com.br"]
+    for email_resumen in emails_resumen:
+        try:
+            user = client.users_lookupByEmail(email=email_resumen)
+            client.files_upload(
+                channels=user['user']['id'],
+                file=resumen_excel,
+                title='Resumo de Envio',
+                initial_comment='Resumo das mensagens enviadas e não enviadas.'
+            )
+            print(f"Resumo enviado para {email_resumen}")
+        except SlackApiError as e:
+            print(f"Erro ao enviar resumo para {email_resumen}: {e.response['error']}")
     # Eliminar el archivo Excel después de enviarlo
     if os.path.exists(resumen_excel):
         os.remove(resumen_excel)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-if __name__ == '__main__': 
+if __name__ == '__main__':  
     app.run(debug=True)

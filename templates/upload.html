@@ -16,7 +16,7 @@
       border: 2px solid #ccc !important;
       padding: 10px !important;
       resize: vertical !important;
-      width: 900px;
+      width: 1200px;
       height: 380px;
       font-family: 'Segoe UI Emoji', 'Apple Color Emoji', sans-serif;
     }
@@ -115,7 +115,14 @@
         <label for="message">Mensaje para Slack:</label>
         <textarea class="form-control" id="message" name="message" rows="10"></textarea>
       </div>
-      <button type="submit" class="btn btn-primary">Upload</button>
+      <div class="form-group">
+        <label for="botChoice">Elegir bot:</label>
+        <select class="form-control" id="botChoice" name="botChoice">
+            <option value="BOT1">Blue</option>
+            <option value="BOT2">Neo-Bot</option>
+        </select>
+    </div>   
+      <button type="submit" class="btn btn-primary">Upload</button>         
       <!-- Agregar el botón "Volver" aquí -->
       <button type="button" id="goBackButton" class="btn btn-secondary mt-2" style="display:none;">Voltar</button>
     </form>
