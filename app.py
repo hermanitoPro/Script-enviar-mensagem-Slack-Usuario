@@ -7,25 +7,59 @@ import pandas as pd
 import time
 from datetime import datetime
 from dotenv import load_dotenv
-import chardet  
+import chardet
 load_dotenv()
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = './uploads'
 app.secret_key = os.urandom(24).hex()
-ALLOWED_EXTENSIONS = {'csv'}
+ALLOWED_EXTENSIONS = {'csv', 'png', 'jpg', 'jpeg', 'gif'}
 slack_token = os.environ.get('SLACK_TOKEN')
 client = WebClient(token=slack_token)
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if request.method == 'POST':
-        bot_choice = request.form.get('botChoice', 'BOT1')  
-        slack_token = os.environ.get(f'SLACK_TOKEN_{bot_choice}')  
-        client = WebClient(token=slack_token)  
+        # Aquí, verifica y crea la carpeta si no existe
+        if not os.path.exists(app.config['UPLOAD_FOLDER']):
+            os.makedirs(app.config['UPLOAD_FOLDER'])
+        bot_choice = request.form.get('botChoice', 'BOT1')
+        slack_token = os.environ.get(f'SLACK_TOKEN_{bot_choice}')
+        client = WebClient(token=slack_token)
+        canal_id = request.form.get('canalId', '').strip()
+        mensaje = request.form.get('message', '')
+        imagen = request.files.get('imagen')       
+        # Recoger el valor del nuevo input
+        imagen_primero = request.form.get('imagenPrimero') == 'true'
+        # Si se proporciona un ID de canal, enviar el mensaje directamente al canal
+        if canal_id:
+            try:
+                imagen_path = None  # Inicializamos imagen_path
+                if imagen and allowed_file(imagen.filename):
+                    imagen_filename = secure_filename(imagen.filename)
+                    imagen_path = os.path.join(app.config['UPLOAD_FOLDER'], imagen_filename)
+                    imagen.save(imagen_path)                   
+                    # Si imagen_primero es True, enviamos la imagen antes del mensaje
+                    if imagen_primero:
+                        client.files_upload(channels=canal_id, file=imagen_path, title="Imagen Adjunta")
+                        if os.path.exists(imagen_path):
+                            os.remove(imagen_path)               
+                # Enviamos el mensaje
+                if mensaje.strip():
+                    client.chat_postMessage(channel=canal_id, text=mensaje)              
+                # Si imagen_primero es False, enviamos la imagen después del mensaje
+                if imagen and not imagen_primero:
+                    client.files_upload(channels=canal_id, file=imagen_path, title="Imagen Adjunta")
+                    if os.path.exists(imagen_path):
+                        os.remove(imagen_path)               
+                flash('Mensaje enviado exitosamente al canal')
+                return redirect(url_for('upload_file'))
+            except SlackApiError as e:
+                flash(f'Error al enviar mensaje al canal: {e.response["error"]}')
+                return redirect(request.url)
+        # Si no se proporciona un ID de canal, seguir el flujo original
         if 'file' not in request.files:
             flash('Arquivo não encontrado')
             return redirect(request.url)
         file = request.files['file']
-        mensaje = request.form.get('message', '')
         if file.filename == '':
             flash('Nenhum arquivo foi selecionado')
             return redirect(request.url)
@@ -33,27 +67,37 @@ def upload_file():
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
-            process_file(file_path, mensaje, client)  
+            imagen_path = None
+            if imagen and allowed_file(imagen.filename):
+                imagen_filename = secure_filename(imagen.filename)
+                imagen_path = os.path.join(app.config['UPLOAD_FOLDER'], imagen_filename)
+                imagen.save(imagen_path)
+            process_file(file_path, mensaje, client, imagen_path, imagen_primero)  # Pasamos imagen_primero
             flash('Mensaje enviado exitosamente')
             return redirect(url_for('upload_file'))
     return render_template('upload.html')
-def process_file(file_path, mensaje, client):  
+def process_file(file_path, mensaje, client, imagen_path=None, imagen_primero=False):
     destinatarios_enviados = []
     destinatarios_errores = []
-    # Detectar la codificación del archivo
     with open(file_path, 'rb') as f:
         result = chardet.detect(f.read())
     try:
         df = pd.read_csv(file_path, sep=';', encoding=result['encoding'])
         for index, row in df.iterrows():
             destinatario = row['Destinatário']
-            # Nuevo: Busca el mensaje de la columna "Posição" si existe
-            numero_mensaje = row.get('Posição', None)  # Obtener el número de la columna "Posição"
-            mensaje_especifico = mensaje.replace("{aqui}", str(numero_mensaje)) if numero_mensaje else mensaje  # Reemplazar {aqui} con el número
+            numero_mensaje = row.get('Posição', None)
+            mensaje_especifico = mensaje.replace("{aqui}", str(numero_mensaje)) if numero_mensaje else mensaje
             while True:
                 try:
-                    user = client.users_lookupByEmail(email=destinatario)
-                    client.chat_postMessage(channel=user['user']['id'], text=mensaje_especifico)  
+                    user = client.users_lookupByEmail(email=destinatario)                   
+                    # Si imagen_primero es True, enviamos la imagen antes del mensaje
+                    if imagen_path and imagen_primero:
+                        client.files_upload(channels=user['user']['id'], file=imagen_path, title="Imagen Adjunta")                       
+                    if mensaje_especifico.strip():
+                        client.chat_postMessage(channel=user['user']['id'], text=mensaje_especifico)                   
+                    # Si imagen_primero es False, enviamos la imagen después del mensaje
+                    if imagen_path and not imagen_primero:
+                        client.files_upload(channels=user['user']['id'], file=imagen_path, title="Imagen Adjunta")                       
                     print(f"Mensagem enviada para {destinatario}")
                     destinatarios_enviados.append(destinatario)
                     break
@@ -66,10 +110,8 @@ def process_file(file_path, mensaje, client):
                         destinatarios_errores.append((destinatario, e.response['error']))
                         break
         enviar_resumen(destinatarios_enviados, destinatarios_errores)
-    except FileNotFoundError:
-        print("Error: Não foi possível encontrar o arquivo CSV.")
-    except PermissionError:
-        print("Erro: Você não tem permissão para ler o arquivo CSV.")
+        if imagen_path and os.path.exists(imagen_path):
+            os.remove(imagen_path)
     except Exception as e:
         print(f"Erro inesperado: {str(e)}")
 def enviar_resumen(destinatarios_enviados, destinatarios_errores):
@@ -99,5 +141,5 @@ def enviar_resumen(destinatarios_enviados, destinatarios_errores):
         os.remove(resumen_excel)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-if __name__ == '__main__':  
+if __name__ == '__main__':  # Corrección aquí
     app.run(debug=True)

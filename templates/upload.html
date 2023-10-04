@@ -89,10 +89,32 @@
       visibility: visible;
       opacity: 1;
     }
+    /* ... (otros estilos) ... */
+    #botList {
+      list-style-type: none;
+      padding: 0;
+    }
+    #botList li {
+      display: inline-block;
+      cursor: pointer;
+      border: 3px solid #ccc;
+      margin-right: 5px;
+      padding: 5px;
+    }
+    #botList li.selected {
+      border-color: #007bff;
+      background-color: #e9f2ff;
+    }
+    .bot-icon {
+      width: 50px;
+      /* Ajusta a tu preferencia */
+      height: 50px;
+      /* Ajusta a tu preferencia */
+    }
   </style>
 </head>
 <body>
-  <div class="container d-flex flex-column justify-content-center align-items-center ">
+  <div class="container d-flex flex-column justify-content-center align-items-center">
     <h1 class="mt-5">Enviar Mensagem Usuarios Slack</h1>
     <form method=post enctype=multipart/form-data>
       <div class="form-group">
@@ -111,20 +133,33 @@
         <button type="button" onclick="applyFormat('link')"><i class="bi bi-link-45deg"></i></button>
       </div>
       <!-- End of Toolbar -->
+      <br>
       <div class="form-group">
-        <label for="message">Mensaje para Slack:</label>
-        <textarea class="form-control" id="message" name="message" rows="10"></textarea>
+        <label for="canalId">ID del Canal:</label>
+        <input type="text" name="canalId" id="canalId">
       </div>
       <div class="form-group">
-        <label for="botChoice">Elegir bot:</label>
-        <select class="form-control" id="botChoice" name="botChoice">
-            <option value="BOT1">Blue</option>
-            <option value="BOT2">Neo-Bot</option>
-        </select>
-    </div>   
-      <button type="submit" class="btn btn-primary">Upload</button>         
-      <!-- Agregar el botón "Volver" aquí -->
-      <button type="button" id="goBackButton" class="btn btn-secondary mt-2" style="display:none;">Voltar</button>
+        <label for="imagen">Imagen para Slack:</label>
+        <input type=file class="form-control-file" id="imagen" name="imagen">
+        <label for="imagenPrimero">Enviar Imagen Primero:</label>
+        <input type="checkbox" id="imagenPrimero" name="imagenPrimero" value="true">
+      </div>
+      <div class="form-group">
+        <label for="message"></label>
+        <textarea class="form-control" id="message" name="message" rows="10"></textarea>
+        <div class="form-group">
+          <label for="botChoice">Elegir bot:</label>
+          <ul id="botList">
+            <li data-bot="BOT1"><img class="bot-icon" src="https://avatars.slack-edge.com/2022-07-12/3803133481297_ab0134d887e6101e4be8_96.png"
+                alt="Bot 1"></li>
+            <li data-bot="BOT2"><img class="bot-icon" src="https://avatars.slack-edge.com/2022-07-11/3785241971426_4a0eac0c6ea25d387ea0_96.jpg"
+                alt="Bot 2"></li>
+          </ul>
+          <input type="hidden" name="botChoice" id="botChoice">
+        </div>
+        <button type="submit" class="btn btn-primary">Upload</button>
+        <!-- Agregar el botón "Volver" aquí -->
+        <button type="button" id="goBackButton" class="btn btn-secondary mt-2" style="display:none;">Voltar</button>
     </form>
     <div id="loading-image" style="display: none;">
       <img src="https://gifs.eco.br/wp-content/uploads/2021/08/imagens-e-gifs-de-loading-7.gif" alt="Cargando...">
@@ -216,6 +251,12 @@
       const currentMessage = $('#message').val();
       localStorage.setItem('prevMessage', currentMessage);
       $('#loading-image').show();
+    });
+    // Controlador de eventos para seleccionar un bot
+    $('#botList li').on('click', function () {
+      $('#botList li').removeClass('selected');
+      $(this).addClass('selected');
+      $('#botChoice').val($(this).data('bot'));
     });
     setTimeout(function () {
       $('.flash-message').fadeOut('fast');
