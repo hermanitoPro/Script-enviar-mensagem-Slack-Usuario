@@ -13,7 +13,7 @@ if not slack_token:
 # Crea un cliente de Slack
 client = WebClient(token=slack_token)
 # Nombre o ID del canal del que deseas obtener los correos electrónicos
-channel_name_or_id = "C0ZJS4TGC"
+channel_name_or_id = ""
 try:
     # Si conoces el nombre del canal, pero no el ID, puedes usar el método conversations_info
     # para obtener el ID primero. Si ya conoces el ID, puedes omitir este paso.
