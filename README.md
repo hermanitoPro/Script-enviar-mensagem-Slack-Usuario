@@ -24,34 +24,32 @@ Você precisa ter as seguintes bibliotecas e ferramentas instaladas:
 ## Instalação
 
 1. clone este repositório:
-
+```
 git clone [URL_REPOSITÓRIO_URL]
-
 ```
 2) Entre no diretório do projeto:
-````bash
-cd [PROJECT_DIRECTORY] ````
+```bash
+cd [PROJECT_DIRECTORY] 
 ```
-
 3. Instale as dependências:
 
-````bash
+```bash
 pip install flask slack_sdk pandas chardet python-dotenv
 ```
 ## Configuração
 1. crie um arquivo `.env` na raiz do projeto.
 2. Adicione seu token do Slack ao arquivo `.env`:
-````bash
+```bash
 SLACK_TOKEN=   #Token onde vai enviar o resumo do envio
 SLACK_TOKEN_BOT1= #Token primero bot
 SLACK_TOKEN_BOT2= #Token segundo bot
 ```
 ## Uso
 1. Execute o aplicativo:
-````bash
+```bash
 python [NOME_DO_ARQUIVO].py
 ```
 Navegue até `http://127.0.0.1:5000/` no seu navegador e siga as instruções na tela para carregar um arquivo e enviar mensagens.
 ## Contribuições
-As contribuições são bem-vindas. P
-````
+As contribuições são bem-vindas. Por Favor Crie uma Issue o Pull Request.
+
